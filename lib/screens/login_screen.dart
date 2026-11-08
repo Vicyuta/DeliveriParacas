@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'cliente_home_screen.dart'; // Importa la pantalla principal
+import 'repartidor_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,6 +14,28 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _escucharEstadoAutenticacion();
+  }
+
+  // Este listener detecta cuando el usuario regresa del navegador tras usar Google
+  void _escucharEstadoAutenticacion() {
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final AuthChangeEvent event = data.event;
+      if (event == AuthChangeEvent.signedIn) {
+        if (mounted) {
+          // Navegación temporal hacia la pantalla del repartidor para testear
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const RepartidorHomeScreen()),
+        );
+        }
+      }
+    });
+  }
 
   Future<void> _loginConCorreo() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
@@ -30,20 +53,17 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
       );
       
-      // SOLUCIÓN AL ASYNC GAP: Verifica que la pantalla siga existiendo tras la espera
       if (!mounted) return; 
 
       if (response.user != null) {
         debugPrint("Login exitoso: ${response.user!.email}");
         
-        // Navegación activada hacia la pantalla principal
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const ClienteHomeScreen()),
         );
       }
     } catch (e) {
-      // SOLUCIÓN AL ASYNC GAP PARA ERRORES
       if (!mounted) return; 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Error: Correo o contraseña incorrectos')),
@@ -52,6 +72,22 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  // Iniciar sesión con Google usando el Deep Link de Supabase
+  Future<void> _loginConGoogle() async {
+    try {
+      await Supabase.instance.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        // ESTA LÍNEA ES CLAVE: Le dice a Google que regrese a la app
+        redirectTo: 'deliveriparacas://login-callback', 
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al conectar con Google: $e')),
+      );
     }
   }
 
@@ -128,11 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 20),
               
               OutlinedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Falta configurar las claves de Google Cloud en Supabase')),
-                  );
-                },
+                onPressed: _loginConGoogle, // <-- Botón conectado a la función
                 icon: const Icon(Icons.g_mobiledata, size: 30, color: Colors.black),
                 label: const Padding(
                   padding: EdgeInsets.symmetric(vertical: 16.0),

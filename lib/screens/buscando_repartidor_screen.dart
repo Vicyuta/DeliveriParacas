@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'cliente_seguimiento_screen.dart'; // Importación agregada
 
 class BuscandoRepartidorScreen extends StatefulWidget {
   const BuscandoRepartidorScreen({super.key});
@@ -33,21 +34,32 @@ class _BuscandoRepartidorScreenState extends State<BuscandoRepartidorScreen> {
             children: [
               const Spacer(),
               
-              // Animación visual del radar
-              Container(
-                width: 150,
-                height: 150,
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Center(
-                  child: SizedBox(
-                    width: 80,
-                    height: 80,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 6,
-                      color: Colors.blue,
+              // Animación visual del radar envuelta en un GestureDetector para probar la navegación
+              GestureDetector(
+                onTap: () {
+                  // Simulación: Tu amigo hará esto automáticamente vía BD
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ClienteSeguimientoScreen(idPedido: 'simulado'),
+                    ),
+                  );
+                },
+                child: Container(
+                  width: 150,
+                  height: 150,
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: SizedBox(
+                      width: 80,
+                      height: 80,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 6,
+                        color: Colors.blue,
+                      ),
                     ),
                   ),
                 ),

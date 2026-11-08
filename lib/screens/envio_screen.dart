@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'buscando_repartidor_screen.dart'; // Reutilizamos el radar de búsqueda
+import 'buscando_repartidor_screen.dart'; 
+import '../supabase_service.dart'; // Importamos el servicio
 
 class EnvioScreen extends StatefulWidget {
   const EnvioScreen({super.key});
@@ -12,8 +13,9 @@ class _EnvioScreenState extends State<EnvioScreen> {
   final _descripcionController = TextEditingController();
   final _origenController = TextEditingController();
   final _destinoController = TextEditingController();
+  bool _isLoading = false; // Estado de carga visual
 
-  void _solicitarRepartidor() {
+  Future<void> _solicitarRepartidor() async {
     if (_descripcionController.text.isEmpty || 
         _origenController.text.isEmpty || 
         _destinoController.text.isEmpty) {
@@ -23,15 +25,32 @@ class _EnvioScreenState extends State<EnvioScreen> {
       return;
     }
     
-    // --- ENCHUFE PARA TU AMIGO ---
-    // Aquí él conectará la lógica para subir el pedido de tipo "Envío" a Supabase
-    debugPrint("Paquete: ${_descripcionController.text} | De: ${_origenController.text} | A: ${_destinoController.text}");
-    
-    // Navegación hacia la pantalla de radar que ya creaste antes
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const BuscandoRepartidorScreen()),
-    );
+    setState(() => _isLoading = true);
+
+    try {
+      final servicio = SupabaseService();
+      // Enviamos los datos a Supabase usando la nueva función
+      await servicio.crearPedidoEnvio(
+        _descripcionController.text,
+        _origenController.text,
+        _destinoController.text,
+      );
+      
+      if (!mounted) return;
+      
+      // Navegación hacia la pantalla de radar
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const BuscandoRepartidorScreen()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al procesar el envío: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -90,13 +109,15 @@ class _EnvioScreenState extends State<EnvioScreen> {
             ),
             const Spacer(),
             ElevatedButton(
-              onPressed: _solicitarRepartidor,
+              onPressed: _isLoading ? null : _solicitarRepartidor,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('Buscar Repartidor', style: TextStyle(fontSize: 18, color: Colors.white)),
+              child: _isLoading
+                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Text('Buscar Repartidor', style: TextStyle(fontSize: 18, color: Colors.white)),
             )
           ],
         ),
