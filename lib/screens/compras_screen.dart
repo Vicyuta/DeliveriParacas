@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:latlong2/latlong2.dart'; 
+import 'package:latlong2/latlong.dart';
 import 'buscando_repartidor_screen.dart';
 import '../supabase_service.dart';
 import 'mapa_selector_screen.dart'; 

@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'cierre_viaje_screen.dart';
 
 class RegistrarCompraScreen extends StatefulWidget {
   final String idPedido;
@@ -11,18 +14,26 @@ class RegistrarCompraScreen extends StatefulWidget {
 
 class _RegistrarCompraScreenState extends State<RegistrarCompraScreen> {
   final _montoController = TextEditingController();
+  final _justificacionController = TextEditingController();
   
-  // Lista temporal para el diseño. Tu amigo la reemplazará enviando 
-  // los datos directamente a Supabase para que el cliente los vea en tiempo real (RF-06).
+  File? _fotoVoucher;
+  bool _mostrarJustificacion = false; // Controla si se ve el campo de texto
   final _comprasRegistradas = [];
 
-  void _adjuntarFoto() {
-    // --- ENCHUFE PARA TU AMIGO ---
-    // Aquí implementarán el paquete 'image_picker' para abrir la cámara,
-    // y luego subirán la foto comprimida (RNF-01) a los buckets de Supabase.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Simulando abrir cámara para el voucher...')),
+  Future<void> _tomarFoto() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? foto = await picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 70,
     );
+
+    if (foto != null) {
+      setState(() {
+        _fotoVoucher = File(foto.path);
+        _mostrarJustificacion = false; // Oculta justificación si ya hay foto
+        _justificacionController.clear();
+      });
+    }
   }
 
   void _agregarGasto() {
@@ -33,28 +44,64 @@ class _RegistrarCompraScreenState extends State<RegistrarCompraScreen> {
       return;
     }
 
-    // Simulamos agregar el gasto localmente
+    // Si no hay foto y la justificación está vacía, mostramos el campo
+    if (_fotoVoucher == null && _justificacionController.text.trim().isEmpty) {
+      setState(() {
+        _mostrarJustificacion = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Debes enviar una foto del voucher o escribir una justificación.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _comprasRegistradas.add({
-        'monto': _montoController.text,
-        'foto': 'voucher_temp.jpg' // Simulación
+        'monto': double.parse(_montoController.text),
+        'foto': _fotoVoucher,
+        'justificacion': _justificacionController.text.trim(),
       });
+      
       _montoController.clear();
+      _justificacionController.clear();
+      _fotoVoucher = null;
+      _mostrarJustificacion = false;
     });
-
-    // --- ENCHUFE PARA TU AMIGO ---
-    // Al registrar un gasto, en Supabase el pedido debe bloquear la opción 
-    // de cancelación para el cliente (RF-08).
   }
 
   void _finalizarCompras() {
-    // --- ENCHUFE PARA TU AMIGO ---
-    // Cambiar el estado del pedido a "En camino al destino" (RF-09).
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Compras terminadas. Iniciando ruta al cliente...')),
+    // Enviamos la lista real de compras a la pantalla de boleta
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CierreViajeScreen(
+          idPedido: widget.idPedido,
+          compras: _comprasRegistradas, // Pasamos los datos
+        ),
+      ),
     );
-    
-    // TODO: Navegar a la pantalla de Navegación/Mapa
+  }
+
+  // Permite ver la foto del voucher en grande si la tocan en la lista
+  void _verFoto(File foto) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.file(foto, fit: BoxFit.contain),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cerrar', style: TextStyle(fontSize: 18)),
+            )
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -71,7 +118,6 @@ class _RegistrarCompraScreenState extends State<RegistrarCompraScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Panel de ingreso de nuevo gasto
             Card(
               elevation: 2,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -89,15 +135,56 @@ class _RegistrarCompraScreenState extends State<RegistrarCompraScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    OutlinedButton.icon(
-                      onPressed: _adjuntarFoto,
-                      icon: const Icon(Icons.camera_alt),
-                      label: const Text('Tomar Foto del Voucher'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    
+                    if (_fotoVoucher == null)
+                      OutlinedButton.icon(
+                        onPressed: _tomarFoto,
+                        icon: const Icon(Icons.camera_alt, color: Colors.blue),
+                        label: const Text('Tomar Foto del Voucher', style: TextStyle(color: Colors.blue)),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          side: const BorderSide(color: Colors.blue),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      )
+                    else
+                      Column(
+                        children: [
+                          const Text('Voucher capturado:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
+                          Stack(
+                            alignment: Alignment.topRight,
+                            children: [
+                              GestureDetector(
+                                onTap: () => _verFoto(_fotoVoucher!),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.file(_fotoVoucher!, height: 100, width: double.infinity, fit: BoxFit.cover),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.cancel, color: Colors.red, size: 30),
+                                onPressed: () => setState(() => _fotoVoucher = null), // Borrar foto
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                    ),
+
+                    const SizedBox(height: 12),
+                    
+                    if (_mostrarJustificacion)
+                      TextField(
+                        controller: _justificacionController,
+                        maxLines: 2,
+                        decoration: InputDecoration(
+                          labelText: 'Justificación (Ej: Pasaje colectivo)',
+                          prefixIcon: const Icon(Icons.edit_note, color: Colors.orange),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: Colors.red), borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: _agregarGasto,
@@ -114,13 +201,9 @@ class _RegistrarCompraScreenState extends State<RegistrarCompraScreen> {
             ),
             
             const SizedBox(height: 20),
-            const Text(
-              'Gastos Registrados:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            const Text('Gastos Registrados:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             
-            // Lista de compras agregadas
             Expanded(
               child: _comprasRegistradas.isEmpty
                   ? const Center(child: Text('Aún no has registrado compras', style: TextStyle(color: Colors.grey)))
@@ -128,20 +211,23 @@ class _RegistrarCompraScreenState extends State<RegistrarCompraScreen> {
                       itemCount: _comprasRegistradas.length,
                       itemBuilder: (context, index) {
                         final compra = _comprasRegistradas[index];
+                        final bool tieneFoto = compra['foto'] != null;
+                        
                         return ListTile(
-                          leading: const Icon(Icons.receipt_long, color: Colors.blue),
-                          title: Text('Voucher #${index + 1}'),
-                          subtitle: const Text('Foto adjuntada'),
-                          trailing: Text(
-                            'S/ ${compra['monto']}',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          leading: Icon(
+                            tieneFoto ? Icons.image : Icons.receipt_long, 
+                            color: tieneFoto ? Colors.green : Colors.orange
                           ),
+                          title: Text('Gasto #${index + 1} - S/ ${compra['monto']}'),
+                          subtitle: Text(
+                            tieneFoto ? 'Toca para ver foto' : 'Justificación: ${compra['justificacion']}',
+                          ),
+                          onTap: tieneFoto ? () => _verFoto(compra['foto']) : null, // Ver foto al tocar la lista
                         );
                       },
                     ),
             ),
             
-            // Botón para finalizar y pasar a la entrega (RF-09)
             ElevatedButton(
               onPressed: _comprasRegistradas.isEmpty ? null : _finalizarCompras,
               style: ElevatedButton.styleFrom(
@@ -149,10 +235,7 @@ class _RegistrarCompraScreenState extends State<RegistrarCompraScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text(
-                'Compras terminadas, yendo al destino',
-                style: TextStyle(fontSize: 16, color: Colors.white),
-              ),
+              child: const Text('Compras terminadas, yendo al destino', style: TextStyle(fontSize: 16, color: Colors.white)),
             ),
           ],
         ),

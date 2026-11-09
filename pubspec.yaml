@@ -36,7 +36,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   supabase_flutter: ^2.18.3
   flutter_map: ^8.3.2
-  latlong2: ^0.10.0
+  latlong2: ^0.10.1
+  image_picker: ^1.2.4
 
 dev_dependencies:
   flutter_test:

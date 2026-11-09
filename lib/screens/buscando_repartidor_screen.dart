@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'cliente_seguimiento_screen.dart'; // Importación agregada
+import 'cliente_seguimiento_screen.dart';
 
 class BuscandoRepartidorScreen extends StatefulWidget {
   const BuscandoRepartidorScreen({super.key});
@@ -14,12 +14,9 @@ class _BuscandoRepartidorScreenState extends State<BuscandoRepartidorScreen> {
   void initState() {
     super.initState();
     // --- ENCHUFE PARA TU AMIGO (BACKEND) ---
-    // Aquí tu compañero debe iniciar un 'stream' (escucha en tiempo real con WebSockets) a Supabase.
-    // El sistema debe quedarse esperando a que algún repartidor cambie el estado de este pedido a 'aceptado'.
-    // Cuando eso ocurra, el código de tu amigo automáticamente ejecutará algo como esto:
-    // if (pedido.estado == 'aceptado') {
-    //   Navigator.pushReplacementNamed(context, '/seguimiento_pedido');
-    // }
+    // Aquí implementará la escucha en tiempo real (Stream) del pedido actual.
+    // Cuando el motorizado acepte el pedido y el estado pase a 'en_camino',
+    // el sistema ejecutará el Navigator automáticamente hacia ClienteSeguimientoScreen.
   }
 
   @override
@@ -34,32 +31,21 @@ class _BuscandoRepartidorScreenState extends State<BuscandoRepartidorScreen> {
             children: [
               const Spacer(),
               
-              // Animación visual del radar envuelta en un GestureDetector para probar la navegación
-              GestureDetector(
-                onTap: () {
-                  // Simulación: Tu amigo hará esto automáticamente vía BD
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ClienteSeguimientoScreen(idPedido: 'simulado'),
-                    ),
-                  );
-                },
-                child: Container(
-                  width: 150,
-                  height: 150,
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: SizedBox(
-                      width: 80,
-                      height: 80,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 6,
-                        color: Colors.blue,
-                      ),
+              // Animación visual del radar
+              Container(
+                width: 150,
+                height: 150,
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: SizedBox(
+                    width: 80,
+                    height: 80,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 6,
+                      color: Colors.blue,
                     ),
                   ),
                 ),
@@ -84,8 +70,8 @@ class _BuscandoRepartidorScreenState extends State<BuscandoRepartidorScreen> {
               OutlinedButton(
                 onPressed: () {
                   // --- ENCHUFE PARA TU AMIGO ---
-                  // Aquí conectará la función para eliminar o marcar como 'cancelado' el pedido en Supabase
-                  Navigator.pop(context); // Regresa a la pantalla de compras
+                  // Lógica para cancelar el pedido en la base de datos
+                  Navigator.pop(context);
                 },
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.red,
